@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weather App — Live Weather & 7-Day Forecast</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:linear-gradient(160deg,#0c2d48,#145374); color:#f0f7fb; min-height:100vh; padding:28px 16px 60px; }
+  .wrap { max-width:680px; margin:0 auto; }
+  h1 { text-align:center; font-size:29px; }
+  .sub { text-align:center; color:#bcd7e8; margin:8px 0 22px; font-size:14.5px; }
+  .search { display:flex; gap:10px; margin-bottom:20px; }
+  .search input { flex:1; padding:13px 16px; border-radius:10px; border:1px solid #2e6b8f; background:rgba(255,255,255,.08); color:#fff; font-size:16px; }
+  .search input::placeholder { color:#9dbfd4; }
+  .search button { padding:13px 22px; border:none; border-radius:10px; background:#ffb703; color:#3a2b00; font-weight:800; font-size:15.5px; cursor:pointer; }
+  .card { background:rgba(255,255,255,.09); border:1px solid rgba(255,255,255,.16); border-radius:16px; padding:24px; margin-bottom:18px; backdrop-filter:blur(4px); }
+  .now { text-align:center; }
+  .now .city { font-size:21px; font-weight:700; }
+  .now .emoji { font-size:74px; margin:8px 0; }
+  .now .temp { font-size:56px; font-weight:800; }
+  .now .cond { color:#d7e9f4; font-size:17px; }
+  .stats { display:flex; justify-content:center; gap:28px; margin-top:16px; flex-wrap:wrap; }
+  .stats div { text-align:center; }
+  .stats .v { font-weight:800; font-size:17px; }
+  .stats .l { color:#bcd7e8; font-size:12.5px; }
+  .days { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; }
+  .day { background:rgba(255,255,255,.07); border-radius:12px; padding:12px 4px; text-align:center; }
+  .day .d { font-size:12.5px; color:#bcd7e8; }
+  .day .e { font-size:25px; margin:6px 0; }
+  .day .hi { font-weight:800; font-size:14.5px; }
+  .day .lo { color:#bcd7e8; font-size:13px; }
+  .msg { text-align:center; color:#ffd166; min-height:22px; margin-bottom:8px; }
+  footer { text-align:center; color:#8fb4c9; font-size:12.5px; margin-top:8px; }
+  @media (max-width:560px){ .days{grid-template-columns:repeat(4,1fr)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌦️ Weather App</h1>
+  <p class="sub">Live weather and a 7-day forecast for any city — powered by the free Open-Meteo API. No sign-up, no API key.</p>
+
+  <div class="search">
+    <input id="city" type="text" placeholder="Type a city name… e.g. Dhaka, Pabna, London" onkeydown="if(event.key==='Enter')search()">
+    <button onclick="search()">Search</button>
+  </div>
+  <div class="msg" id="msg">Loading Dhaka weather…</div>
+
+  <div class="card now" id="nowCard" style="display:none">
+    <div class="city" id="cityName"></div>
+    <div class="emoji" id="emoji"></div>
+    <div class="temp" id="temp"></div>
+    <div class="cond" id="cond"></div>
+    <div class="stats">
+      <div><div class="v" id="feels"></div><div class="l">Feels like</div></div>
+      <div><div class="v" id="hum"></div><div class="l">Humidity</div></div>
+      <div><div class="v" id="wind"></div><div class="l">Wind</div></div>
+    </div>
+  </div>
+
+  <div class="card" id="weekCard" style="display:none">
+    <h3 style="margin-bottom:14px">7-Day Forecast</h3>
+    <div class="days" id="days"></div>
+  </div>
+
+  <footer>Data: Open-Meteo.com · Built with HTML, CSS &amp; JavaScript</footer>
+</div>
+
+<script>
+  function codeInfo(code) {
+    if (code === 0) return ['☀️', 'Clear sky'];
+    if (code === 1) return ['🌤️', 'Mainly clear'];
+    if (code === 2) return ['⛅', 'Partly cloudy'];
+    if (code === 3) return ['☁️', 'Overcast'];
+    if (code === 45 || code === 48) return ['🌫️', 'Foggy'];
+    if (code >= 51 && code <= 57) return ['🌦️', 'Drizzle'];
+    if (code >= 61 && code <= 67) return ['🌧️', 'Rain'];
+    if (code >= 71 && code <= 77) return ['🌨️', 'Snow'];
+    if (code >= 80 && code <= 82) return ['🌧️', 'Rain showers'];
+    if (code === 85 || code === 86) return ['🌨️', 'Snow showers'];
+    if (code >= 95) return ['⛈️', 'Thunderstorm'];
+    return ['🌡️', '—'];
+  }
+  async function loadWeather(lat, lon, name, country) {
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Loading weather for ' + name + '…';
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const c = data.current;
+      const [emoji, cond] = codeInfo(c.weather_code);
+      document.getElementById('cityName').textContent = name + (country ? ', ' + country : '');
+      document.getElementById('emoji').textContent = emoji;
+      document.getElementById('temp').textContent = Math.round(c.temperature_2m) + '°C';
+      document.getElementById('cond').textContent = cond;
+      document.getElementById('feels').textContent = Math.round(c.apparent_temperature) + '°C';
+      document.getElementById('hum').textContent = c.relative_humidity_2m + '%';
+      document.getElementById('wind').textContent = Math.round(c.wind_speed_10m) + ' km/h';
+      document.getElementById('nowCard').style.display = 'block';
+
+      const daysEl = document.getElementById('days');
+      const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      daysEl.innerHTML = data.daily.time.map((t, i) => {
+        const d = new Date(t + 'T00:00:00');
+        const [e] = codeInfo(data.daily.weather_code[i]);
+        return `<div class="day"><div class="d">${i === 0 ? 'Today' : names[d.getDay()]}</div><div class="e">${e}</div><div class="hi">${Math.round(data.daily.temperature_2m_max[i])}°</div><div class="lo">${Math.round(data.daily.temperature_2m_min[i])}°</div></div>`;
+      }).join('');
+      document.getElementById('weekCard').style.display = 'block';
+      msg.textContent = '';
+    } catch (e) {
+      msg.textContent = 'Could not load the weather. Please check your connection and try again.';
+    }
+  }
+  async function search() {
+    const q = document.getElementById('city').value.trim();
+    if (!q) return;
+    const msg = document.getElementById('msg');
+    msg.textContent = 'Searching for "' + q + '"…';
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=en`);
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) { msg.textContent = 'City not found. Try another name.'; return; }
+      const r = data.results[0];
+      loadWeather(r.latitude, r.longitude, r.name, r.country);
+    } catch (e) {
+      msg.textContent = 'Search failed. Please try again.';
+    }
+  }
+  loadWeather(23.8103, 90.4125, 'Dhaka', 'Bangladesh');
+</script>
+</body>
+</html>
